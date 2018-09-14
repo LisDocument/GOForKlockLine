@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hello/models"
 	_ "hello/routers"
+	"strconv"
 )
 
 func main() {
@@ -11,11 +12,16 @@ func main() {
 
 	bc.AddBlock("Send 1")
 	bc.AddBlock("Send 2")
+	bc.AddBlock("Send 3")
+	bc.AddBlock("Send 4")
+	bc.AddBlock("Send dadaskhdajdklandmaldnasldnaldnakldnasdaskljdfnakljdaldnasldnad")
 
 	for _,block := range bc.GetBlocks(){
 		fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
 		fmt.Printf("Data: %s\n", block.Data)
 		fmt.Printf("Hash: %x\n", block.Hash)
+		pow := models.NewProofOfWork(block)
+		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 	}
 

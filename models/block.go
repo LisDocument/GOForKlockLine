@@ -2,9 +2,8 @@ package models
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"math/big"
-	"strconv"
+	"encoding/gob"
+	"log"
 	"time"
 )
 
@@ -17,61 +16,55 @@ type Block struct {
 	Data []byte
 	PrevBlockHash []byte
 	Hash          []byte
-}
-/**
-区块链
- */
-type Blockchain struct {
-	blocks []*Block
+	Nonce int
 }
 
-type ProofOfWork struct {
-	block *Block
-	target *big.Int
-}
-/**
-指向目标的指针
- */
-func NewProofOfWork(b *Block) *ProofOfWork  {
-	target := big.NewInt(1)
-	//右移xxx位
-	target.Lsh(target,uint(256-targetBits))
 
-	pow := &ProofOfWork{b,target}
-
-	return pow
-}
-
-func (bc *Blockchain) GetBlocks() []*Block  {
-	return bc.blocks
-}
-
-func (b *Block) SetHash(){
-	timestamp := []byte(strconv.FormatInt(b.Timestamp,10))
-	headers := bytes.Join([][]byte{b.PrevBlockHash,b.Data,timestamp},[]byte{})
-	hash := sha256.Sum256(headers)
-
-	b.Hash = hash[:]
-}
+//func (b *Block) SetHash(){
+//	timestamp := []byte(strconv.FormatInt(b.Timestamp,10))
+//	headers := bytes.Join([][]byte{b.PrevBlockHash,b.Data,timestamp},[]byte{})
+//	hash := sha256.Sum256(headers)
+//
+//	b.Hash = hash[:]
+//}
 
 func NewBlock(data string, prevBlockHash []byte) *Block{
-	block := &Block{time.Now().Unix(),[]byte(data),prevBlockHash,[]byte{}}
-	block.SetHash()
+	block := &Block{time.Now().Unix(),[]byte(data),prevBlockHash,[]byte{},0}
+	pow := NewProofOfWork(block)
+	nonce, hash := pow.Run()
+
+	block.Hash = hash[:]
+	block.Nonce = nonce
+
 	return block
 }
 
-func (bc *Blockchain) AddBlock(data string){
-
-	prevBlock := bc.blocks[len(bc.blocks)-1]
-	newBlock := NewBlock(data, prevBlock.Hash)
-	bc.blocks = append(bc.blocks,newBlock)
-
+/**
+实现序列化
+ */
+func (b *Block) Serialize() []byte{
+	//定义个buff保存序列化后的字符串
+	var result = bytes.Buffer{}
+	//实例化一个序列化实例，保存到result中
+	encoder := gob.NewEncoder(&result)
+	//对区划进行实例化
+	err := encoder.Encode(b)
+	if err != nil{
+		log.Panic(err)
+	}
+	return result.Bytes()
 }
 
-func NewGenesisBlock() *Block  {
-	return NewBlock("Genesis Block",[]byte{})
+/**
+反序列化
+ */
+func DeserializeBlock(d []byte) *Block{
+	var block Block
+	decoder := gob.NewDecoder(bytes.NewReader(d))
+	err := decoder.Decode(&block)
+	if err != nil{
+		log.Panic(err)
+	}
+	return &block
 }
 
-func NewBlockChain() *Blockchain {
-	return &Blockchain{[]*Block{NewGenesisBlock()}}
-}
