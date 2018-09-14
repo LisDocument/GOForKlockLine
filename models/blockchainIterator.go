@@ -23,7 +23,7 @@ func (i *BlockchainIterator) Next() *Block  {
 		//获取数据库中当前区块被序列化的区块
 		encoderBlock := b.Get(i.currentHash)
 		//反序列化操作
-		block := DeserializeBlock(encoderBlock)
+		block = DeserializeBlock(encoderBlock)
 
 		return nil
 	})

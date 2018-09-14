@@ -2,7 +2,9 @@ package models
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
+	"hello/transaction"
 	"log"
 	"time"
 )
@@ -13,7 +15,8 @@ var targetBits = 24
  */
 type Block struct {
 	Timestamp int64
-	Data []byte
+	//Data []byte
+	transactions 	[]*transaction.Transaction
 	PrevBlockHash []byte
 	Hash          []byte
 	Nonce int
@@ -28,8 +31,8 @@ type Block struct {
 //	b.Hash = hash[:]
 //}
 
-func NewBlock(data string, prevBlockHash []byte) *Block{
-	block := &Block{time.Now().Unix(),[]byte(data),prevBlockHash,[]byte{},0}
+func NewBlock(data []*transaction.Transaction, prevBlockHash []byte) *Block{
+	block := &Block{time.Now().Unix(),data,prevBlockHash,[]byte{},0}
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
 
@@ -38,6 +41,21 @@ func NewBlock(data string, prevBlockHash []byte) *Block{
 
 	return block
 }
+
+//区块交易字段，因为每个交易ID是序列化并HASH后的交易数据结构，所以我们只需要把所有的交易ID进行hash可以了
+func (b *Block) HashTransactions() []byte  {
+	var txHash [32]byte
+	var txHashes [][]byte
+
+	for _,tx := range b.transactions{
+		txHashes = append(txHashes,tx.ID)
+	}
+
+	txHash = sha256.Sum256(bytes.Join(txHashes,[]byte{}))
+
+	return txHash[:]
+}
+
 
 /**
 实现序列化

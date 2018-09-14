@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/boltdb/bolt"
+	"hello/transaction"
 	"log"
 )
 
@@ -17,6 +18,41 @@ const blocksBucket  = "block"
 type Blockchain struct {
 	db *bolt.DB
 	tip []byte
+}
+
+func(bc *Blockchain) Db() *bolt.DB{
+	return bc.db
+}
+
+//把区块添加进区块链挖矿
+func(bc *Blockchain) MineBlock(transactions []*transaction.Transaction){
+	var lastHash []byte
+	//只读方式浏览数据库，获取当前区块链顶端区块的hash，为下以区块做准备
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		lastHash = b.Get([]byte("1"))
+
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//求出新区块
+	newBlock := NewBlock(transactions,lastHash)
+
+	//把新区块加入到数据库区块链中
+	err = bc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		err := b.Put(newBlock.Hash,newBlock.Serialize())
+		if err != nil {
+			log.Panic(err)
+		}
+		err = b.Put([]byte("l"),newBlock.Hash)
+		bc.tip = newBlock.Hash
+
+		return nil
+	})
 }
 
 /**
@@ -72,14 +108,14 @@ func (bc *Blockchain) Iterator() *BlockchainIterator{
 /**
 创建链的创世块
  */
-func NewGenesisBlock() *Block  {
-	return NewBlock("Genesis Block",[]byte{})
+func NewGenesisBlock(coinbase *transaction.Transaction) *Block  {
+	return NewBlock([]*transaction.Transaction{coinbase},[]byte{})
 }
 
 /**
 创建链
  */
-func NewBlockChain() *Blockchain {
+func NewBlockChain(address string) *Blockchain {
 
 	var tip []byte
 	//打开一个数据库文件，如果文件不存在则创建改名字的文件
@@ -116,6 +152,7 @@ func NewBlockChain() *Blockchain {
 		return nil
 	})
 
-
+	bc := Blockchain{db,tip}
+	return &bc
 	//return &Blockchain{[]*Block{NewGenesisBlock()}}
 }
